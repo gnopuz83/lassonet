@@ -4,7 +4,14 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
 
 from typing import Callable
- 
+
+import matplotlib.pyplot as plt
+from torch.optim.lr_scheduler import StepLR
+from sklearn.model_selection import train_test_split
+import warnings
+
+
+
 # The following code is copied (with small adaptations) from https://github.com/lasso-net/lassonet/blob/master/lassonet/prox.py
 # Copyright of Louis Abraham, Ismael Lemhadri
 
@@ -59,6 +66,23 @@ def hier_prox(v, u, lambda_, lambda_bar, M):
     return beta_star, theta_star
 
 #%% own implementation of LassoNet
+
+class MyDataset(Dataset):
+    def __init__(self, data, targets):
+        self.data = data
+        self.targets = targets
+
+    def __len__(self):
+        return len(self.targets)
+
+    def __getitem__(self, idx):
+        x = self.data[idx, :]
+        y = self.targets[idx]
+        return x, y
+    
+
+
+
 
 class LassoNet(torch.nn.Module):
     def __init__(self, G: torch.nn.Module, lambda_: float=0.01, M: float=10, skip_bias: bool=False):
@@ -153,7 +177,108 @@ class LassoNet(torch.nn.Module):
             accuracy = (predictions == targets).float().mean().item()
             info['train_loss'].append(loss_val.item())
             info['train_acc'].append(accuracy)
+          
             
                     
         return info
+      
+
+
+
+
+  
+  
+
+def lassonet_wrapper(X, Y, NN, lambda_, M, D_in, D_out, H, batch_size, set_seed = 42, valid = None, SPLIT = 0.9, skip_bias = True, n_epochs = 80, alpha0 = 1e-3, optimizer = 'SGD', verbose = True):
+      
+    '''
+  NN the architecture of the neural network
+  
+  X:Scaled input nxp
+  Y:target nx1
+  valid:boolean(true split the data in validation and train set)
+  SPLIT:splitting parameter
+  
+  D_in:NN input dimension
+  D_out:NN output dimension
+  H:dimension of the first hidden layer
+  batch_size:batch_size
+  n_epochs:number of epochs of NN
+  alpha0:initial step size learning rate
+    '''
+    torch.manual_seed(set_seed)
+    np.random.seed(set_seed)
+    if valid:
+        x, x_valid, y, y_valid = train_test_split(X,Y, train_size = SPLIT, random_state = set_seed)
+        ds = MyDataset(x,y)
+        dl = DataLoader(ds, batch_size = batch_size, shuffle = True)
+        valid_ds = MyDataset(x_valid, y_valid)
+    
+    else:
+        ds = MyDataset(X,Y)
+        dl = DataLoader(ds, batch_size = batch_size, shuffle = True)
+    
+  # neural network creation
+  
+  
+    G = NN(D_in = D_in, D_out = D_out, H = H)
+  
+    model = LassoNet(G, lambda_ = lambda_, M = M, skip_bias = skip_bias)
+    loss = torch.nn.MSELoss(reduction='mean')
+
+
+    
+    if optimizer == 'SGD':
+        opt = torch.optim.SGD(model.parameters(), lr = alpha0, momentum = 0.9, nesterov = True)
+    elif optimizer == 'ADAM':
+        opt = torch.optim.Adam(model.parameters(), lr = alpha0)
+    else:
+        warnings.warn("optimizer has to be SGD or ADAM, change it to SGD")
+        opt = torch.optim.SGD(model.parameters(), lr = alpha0, momentum = 0.9, nesterov = True)
+    
+    lr_schedule = StepLR(opt, step_size = 20, gamma = 0.7)
+
+    
+    if valid:
+        loss_hist = {'train_loss':[], 'valid_loss':[]}
+    else:
+        loss_hist = {'train_loss':[]}  
+    
+    
+    for j in np.arange(n_epochs): 
+        if verbose:
+            print(f"================== Epoch {j+1}/{n_epochs} ================== ")
+    #print(opt)  
+    
+    ### TRAINING
+        epoch_info = model.train_epoch(loss, dl, opt=opt)
+        loss_hist['train_loss'].append(np.mean(epoch_info['train_loss']))
+    
+        if lr_schedule is not None:
+            lr_schedule.step()
+    
+    ### VALIDATION
+        if valid:
+            model.eval()
+            output = model.forward(valid_ds.data)          
+            valid_loss = loss(output, valid_ds.targets).item()
+            loss_hist['valid_loss'].append(valid_loss)
+            if verbose:
+                print(f"  validation loss: {valid_loss}.")    
+        if verbose:
+            print(f"  train loss: {np.mean(epoch_info['train_loss'])}.")
+  
+    final_return = {
+        'model':model, 'NN': G, 'theta' : model.skip.weight.data.numpy(), 'W1' : G.W1.weight.data.numpy()}
+
+    
+    return final_return
+      
+  
+  
+
+
+
+
+
     
