@@ -206,6 +206,8 @@ def lassonet_wrapper(X, Y, NN, lambda_, M, D_in, D_out, H, batch_size, set_seed 
   n_epochs:number of epochs of NN
   alpha0:initial step size learning rate
     '''
+    X = torch.tensor(X).float()
+    Y = torch.tensor(Y).float()
     torch.manual_seed(set_seed)
     np.random.seed(set_seed)
     if valid:
@@ -249,11 +251,10 @@ def lassonet_wrapper(X, Y, NN, lambda_, M, D_in, D_out, H, batch_size, set_seed 
         if verbose:
             print(f"================== Epoch {j+1}/{n_epochs} ================== ")
     #print(opt)  
-    
+        
     ### TRAINING
         epoch_info = model.train_epoch(loss, dl, opt=opt)
         loss_hist['train_loss'].append(np.mean(epoch_info['train_loss']))
-    
         if lr_schedule is not None:
             lr_schedule.step()
     
