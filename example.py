@@ -5,6 +5,7 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import Dataset, DataLoader
 
 from module import LassoNet
+from module import lassonet_wrapper
 
 
 torch.manual_seed(42)
@@ -54,7 +55,7 @@ class FeedForward(torch.nn.Module):
     """
     2-layer NN with RelU
     """
-    def __init__(self, D_in, D_out):
+    def __init__(self, D_in, D_out, H):
         super().__init__()
         self.D_in = D_in
         self.D_out = D_out
@@ -63,7 +64,7 @@ class FeedForward(torch.nn.Module):
         self.relu = torch.nn.ReLU()
         self.W2 = torch.nn.Linear(H, H)
         self.W3 = torch.nn.Linear(H, D_out)
-        return
+        
     
     def forward(self, x):
         x = self.W1(x)
@@ -124,6 +125,8 @@ for j in np.arange(n_epochs):
 
 print("Skip layer weights: ", model.skip.weight.data)
 
+
+
 fig, ax = plt.subplots()
 ax.plot(loss_hist['train_loss'], c = '#002635', marker = 'o', label = 'Training loss')
 ax.plot(loss_hist['valid_loss'], c = '#002635', marker = 'x', ls = '--', label = 'Validation loss')
@@ -161,3 +164,12 @@ ax.imshow(G.W1.weight.data, cmap = "coolwarm", vmin = -.1, vmax = .1)
 #         z = torch.einsum('ij,ij->i',x,y).reshape(-1,1)
         
 #         return z
+
+
+
+first_try = lassonet_wrapper(X = X, Y = Y, NN = FeedForward, lambda_ = l1, M = M, D_in = D_in, D_out = D_out, H = H, batch_size = batch_size)
+
+
+
+
+
