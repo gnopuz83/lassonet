@@ -208,6 +208,7 @@ def lassonet_wrapper(X, Y, NN, lambda_, M, D_in, D_out, H, batch_size, set_seed 
     '''
     X = torch.tensor(X).float()
     Y = torch.tensor(Y).float()
+    Y = Y.reshape(Y.shape[0], 1)
     torch.manual_seed(set_seed)
     np.random.seed(set_seed)
     if valid:
@@ -270,7 +271,8 @@ def lassonet_wrapper(X, Y, NN, lambda_, M, D_in, D_out, H, batch_size, set_seed 
             print(f"  train loss: {np.mean(epoch_info['train_loss'])}.")
   
     final_return = {
-        'model':model, 'NN': G, 'theta' : model.skip.weight.data.numpy(), 'W1' : G.W1.weight.data.numpy()}
+        'model':model, 'NN': G, 'theta' : model.skip.weight.data.numpy(), 'W1' : G.W1.weight.data.numpy(),
+        'loss': loss_hist}
 
     
     return final_return
