@@ -189,7 +189,7 @@ class LassoNet(torch.nn.Module):
   
   
 
-def lassonet_wrapper(X, Y, NN, lambda_, M, D_in, D_out, H, batch_size, set_seed = 42, valid = None, SPLIT = 0.9, skip_bias = True, n_epochs = 80, alpha0 = 1e-3, optimizer = 'SGD', verbose = True):
+def lassonet_wrapper(X, Y, NN, lambda_, M, D_in, D_out, H, batch_size, set_seed = 42, valid = True, SPLIT = 0.9, skip_bias = True, n_epochs = 80, alpha0 = 1e-3, optimizer = 'SGD', verbose = True, step_size = 20, gamma = 0.7):
       
     '''
   NN the architecture of the neural network
@@ -205,6 +205,8 @@ def lassonet_wrapper(X, Y, NN, lambda_, M, D_in, D_out, H, batch_size, set_seed 
   batch_size:batch_size
   n_epochs:number of epochs of NN
   alpha0:initial step size learning rate
+  step_size: stepLR param.
+  gamme: stepLR param.
     '''
     X = torch.tensor(X).float()
     Y = torch.tensor(Y).float()
@@ -239,7 +241,7 @@ def lassonet_wrapper(X, Y, NN, lambda_, M, D_in, D_out, H, batch_size, set_seed 
         warnings.warn("optimizer has to be SGD or ADAM, change it to SGD")
         opt = torch.optim.SGD(model.parameters(), lr = alpha0, momentum = 0.9, nesterov = True)
     
-    lr_schedule = StepLR(opt, step_size = 20, gamma = 0.7)
+    lr_schedule = StepLR(opt, step_size = step_size, gamma = gamma)
 
     
     if valid:
